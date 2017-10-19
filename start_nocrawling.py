@@ -1,4 +1,3 @@
-
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
@@ -6,15 +5,20 @@ import time
 import re
 
 def DownloadFile(url,local_filename):
-    #local_filename = url.split('/')[-1]
-    r = requests.get(url)
-    f = open(local_filename, 'wb')
-    for chunk in r.iter_content(chunk_size=512 * 1024): 
-        if chunk: # filter out keep-alive new chunks
-            f.write(chunk)
-    f.close()
-    return 1
-	
+    global content_length;
+	head = requests.head(url)
+	if  ('Content-Length' in str(head.headers)) and (int(head.headers['Content-Length']) < content_length):
+		r = requests.get(url)
+		f = open(local_filename, 'wb')
+		for chunk in r.iter_content(chunk_size=512 * 1024): 
+			if chunk: # filter out keep-alive new chunks
+				f.write(chunk)
+		f.close()
+	else:
+		print(str(head.headers))
+	return 1
+
+		
 def GetGoogleLinks(google_site):
 	tempsoup = BeautifulSoup(google_site,'html.parser')
 	templinks = tempsoup.findAll('a');
@@ -24,7 +28,8 @@ def GetGoogleLinks(google_site):
 		if ('/url?q=' in str(el)) and ('webcache' not in str(el)) and (str(el)[16:20] == 'http') or (str(el)[16:19] == 'www'):
 			# only print out starting letter (leave out "/url?q="
 			temptext = str(el['href'])[7:];
-			out.append(temptext.partition("/&sa")[0]);
+			temptext = temptext.partition("/&sa")[0];
+			out.append(temptext.partition("&sa")[0]);
 	return out
 
 def GetFiles(soup,field):
@@ -32,21 +37,26 @@ def GetFiles(soup,field):
 	for el in soup:
 		cur_string = el[field]
 		# Find if type attribute is audio/wav 
-		if ('wav' in str(el)) : # and (el['type'] == 'audio/wav') :
+		if ('.wav' in str(el)) : # and (el['type'] == 'audio/wav') :
 			DownloadFile(el[field], wav_output_dir+'/'+str(wav_counter)+'.wav');
 			print('wav')
+			print(el[field])
 			wav_counter += 1;
-		if ('mp3' in str(el)):
+		if ('.mp3' in str(el)):
 			print('mp3')
+			print(el[field])
 			DownloadFile(el[field], wav_output_dir+'/'+str(mp3_counter)+'.mp3');
 			mp3_counter += 1;
-		if ('mp4' in str(el)):
+		if ('.mp4' in str(el)):
 			print('mp4')
+			print(el[field])
 			DownloadFile(el[field], video_output_dir+'/'+str(mp4_counter)+'.mp4');
 			mp4_counter += 1;
 	
-search_term = 'trump+mp3+-podcast';
+	
+search_term = 'trump+mp3';
 runs = 15; # Equals number of Google sites looked at.
+content_length = 10621404;
 
 wav_output_dir = 'E:/wavs/audio';	
 video_output_dir = 'E:/wavs/video';	
@@ -73,9 +83,9 @@ for link in links_:
 	soup = BeautifulSoup(data,'html.parser')
 	sources = soup.select('div source[src]');
 	links = soup.select('link');
-	GetFiles(sources,'src');
 	GetFiles(links,'href');
-	
+	GetFiles(sources,'src');
+
 
 
 
